@@ -12,9 +12,9 @@
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug",
-            "executable": "/Users/tombourti/Documents/PlatformIO/Projects/Tuisse/.pio/build/uno/firmware.elf",
+            "executable": "c:/Users/Amine/Music/PROJIT/IOT_sprint/.pio/build/uno/firmware.elf",
             "projectEnvName": "uno",
-            "toolchainBinDir": "/Users/tombourti/.platformio/packages/toolchain-atmelavr/bin",
+            "toolchainBinDir": "C:/Users/Amine/.platformio/packages/toolchain-atmelavr/bin",
             "internalConsoleOptions": "openOnSessionStart",
             "preLaunchTask": {
                 "type": "PlatformIO",
@@ -25,18 +25,18 @@
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug (skip Pre-Debug)",
-            "executable": "/Users/tombourti/Documents/PlatformIO/Projects/Tuisse/.pio/build/uno/firmware.elf",
+            "executable": "c:/Users/Amine/Music/PROJIT/IOT_sprint/.pio/build/uno/firmware.elf",
             "projectEnvName": "uno",
-            "toolchainBinDir": "/Users/tombourti/.platformio/packages/toolchain-atmelavr/bin",
+            "toolchainBinDir": "C:/Users/Amine/.platformio/packages/toolchain-atmelavr/bin",
             "internalConsoleOptions": "openOnSessionStart"
         },
         {
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug (without uploading)",
-            "executable": "/Users/tombourti/Documents/PlatformIO/Projects/Tuisse/.pio/build/uno/firmware.elf",
+            "executable": "c:/Users/Amine/Music/PROJIT/IOT_sprint/.pio/build/uno/firmware.elf",
             "projectEnvName": "uno",
-            "toolchainBinDir": "/Users/tombourti/.platformio/packages/toolchain-atmelavr/bin",
+            "toolchainBinDir": "C:/Users/Amine/.platformio/packages/toolchain-atmelavr/bin",
             "internalConsoleOptions": "openOnSessionStart",
             "loadMode": "manual"
         }
