@@ -8,29 +8,29 @@
         {
             "name": "PlatformIO",
             "includePath": [
-                "C:/Users/eliot/Documents/iot/include",
-                "C:/Users/eliot/Documents/iot/src",
-                "C:/Users/eliot/.platformio/packages/framework-arduino-avr/cores/arduino",
-                "C:/Users/eliot/.platformio/packages/framework-arduino-avr/variants/standard",
-                "C:/Users/eliot/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
-                "C:/Users/eliot/.platformio/packages/framework-arduino-avr/libraries/HID/src",
-                "C:/Users/eliot/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
-                "C:/Users/eliot/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
-                "C:/Users/eliot/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
+                "/Users/tombourti/Documents/PlatformIO/Projects/Tuisse/include",
+                "/Users/tombourti/Documents/PlatformIO/Projects/Tuisse/src",
+                "/Users/tombourti/.platformio/packages/framework-arduino-avr/cores/arduino",
+                "/Users/tombourti/.platformio/packages/framework-arduino-avr/variants/standard",
+                "/Users/tombourti/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
+                "/Users/tombourti/.platformio/packages/framework-arduino-avr/libraries/HID/src",
+                "/Users/tombourti/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
+                "/Users/tombourti/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
+                "/Users/tombourti/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
                 ""
             ],
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
-                    "C:/Users/eliot/Documents/iot/include",
-                    "C:/Users/eliot/Documents/iot/src",
-                    "C:/Users/eliot/.platformio/packages/framework-arduino-avr/cores/arduino",
-                    "C:/Users/eliot/.platformio/packages/framework-arduino-avr/variants/standard",
-                    "C:/Users/eliot/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
-                    "C:/Users/eliot/.platformio/packages/framework-arduino-avr/libraries/HID/src",
-                    "C:/Users/eliot/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
-                    "C:/Users/eliot/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
-                    "C:/Users/eliot/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
+                    "/Users/tombourti/Documents/PlatformIO/Projects/Tuisse/include",
+                    "/Users/tombourti/Documents/PlatformIO/Projects/Tuisse/src",
+                    "/Users/tombourti/.platformio/packages/framework-arduino-avr/cores/arduino",
+                    "/Users/tombourti/.platformio/packages/framework-arduino-avr/variants/standard",
+                    "/Users/tombourti/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
+                    "/Users/tombourti/.platformio/packages/framework-arduino-avr/libraries/HID/src",
+                    "/Users/tombourti/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
+                    "/Users/tombourti/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
+                    "/Users/tombourti/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
                     ""
                 ]
             },
@@ -45,7 +45,7 @@
             ],
             "cStandard": "gnu11",
             "cppStandard": "gnu++11",
-            "compilerPath": "C:/Users/eliot/.platformio/packages/toolchain-atmelavr/bin/avr-gcc.exe",
+            "compilerPath": "/Users/tombourti/.platformio/packages/toolchain-atmelavr/bin/avr-gcc",
             "compilerArgs": [
                 "-mmcu=atmega328p",
                 ""
