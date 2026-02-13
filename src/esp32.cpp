@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <cstring>
 #include <DHT.h>
 #include <PubSubClient.h>
 #include <WiFi.h>
@@ -18,6 +19,12 @@ static unsigned long lastSensorPublishMs = 0;
 
 static const char *MQTT_HOST = "192.168.50.1";
 static const uint16_t MQTT_PORT = 1883;
+#ifndef MQTT_USER
+#define MQTT_USER ""
+#endif
+#ifndef MQTT_PASS
+#define MQTT_PASS ""
+#endif
 
 static const char *TOPIC_TEMPERATURE = "salle_serveur/sensor/temperature";
 static const char *TOPIC_HUMIDITY = "salle_serveur/sensor/humidity";
@@ -94,8 +101,14 @@ void connectToMqtt() {
   lastMqttAttemptMs = millis();
   Serial.printf("MQTT: connexion a %s:%u...\n", MQTT_HOST, MQTT_PORT);
 
-  const bool ok = mqttClient.connect(mqttClientId.c_str(), TOPIC_STATUS, 1,
-                                     true, "offline");
+  bool ok = false;
+  if (strlen(MQTT_USER) > 0) {
+    ok = mqttClient.connect(mqttClientId.c_str(), MQTT_USER, MQTT_PASS,
+                            TOPIC_STATUS, 1, true, "offline");
+  } else {
+    ok = mqttClient.connect(mqttClientId.c_str(), TOPIC_STATUS, 1, true,
+                            "offline");
+  }
   if (!ok) {
     Serial.printf("MQTT echec: rc=%d\n", mqttClient.state());
     return;
