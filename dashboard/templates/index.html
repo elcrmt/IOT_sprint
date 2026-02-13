@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Dashboard - REST API</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background-color: #f0f2f5; padding: 20px; }
+        .container { display: flex; flex-wrap: wrap; justify-content: center; max-width: 1000px; margin: 0 auto; }
+        .card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); display: inline-block; min-width: 250px; margin: 15px; flex: 1; }
+        .value { font-size: 3.5em; font-weight: bold; color: #2c3e50; margin: 10px 0; }
+        .unit { font-size: 0.4em; color: #7f8c8d; }
+        .temp { color: #e74c3c; }
+        .hum { color: #3498db; }
+        .status { font-size: 1.8em; margin: 15px 0; font-weight: bold; padding: 10px; border-radius: 8px; }
+        .status.on { color: #ffffff; background-color: #e74c3c; box-shadow: 0 0 20px rgba(231, 76, 60, 0.5); }
+        .status.off { color: #ffffff; background-color: #2ecc71; }
+        .controls { margin-top: 20px; }
+        button { padding: 12px 24px; font-size: 1.1em; cursor: pointer; border-radius: 8px; border: none; transition: all 0.2s; font-weight: bold; margin: 5px; }
+        .btn-on { background: #e74c3c; color: white; }
+        .btn-off { background: #2ecc71; color: white; }
+        button:hover { opacity: 0.8; transform: translateY(-2px); }
+        .threshold { font-size: 1.2em; color: #7f8c8d; margin-top: 5px; }
+        .esp-status { margin-top: 10px; font-weight: bold; }
+        .dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .dot-online { background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
+        .dot-offline { background-color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <h1>Tableau de Bord IoT</h1>
+    
+    <div style="margin-bottom: 20px;">
+        <span id="esp-dot" class="dot dot-offline"></span>
+        ESP32: <span id="esp-text" class="esp-status" style="color: #e74c3c;">OUI (simulation)</span>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <h2>Température</h2>
+            <div class="value temp"><span id="temp-val">--</span><span class="unit">°C</span></div>
+            <div class="threshold">Seuil: <span id="threshold-val">--</span>°C</div>
+        </div>
+
+        <div class="card">
+            <h2>Humidité</h2>
+            <div class="value hum"><span id="hum-val">--</span><span class="unit">%</span></div>
+        </div>
+
+        <div class="card">
+            <h2>État de l'Alarme</h2>
+            <div class="status off" id="alarm-status">OFF</div>
+            <div class="controls">
+                <button class="btn-on" onclick="setAlarm(true)">FORCE ON</button>
+                <button class="btn-off" onclick="setAlarm(false)">FORCE OFF</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function updateDashboard() {
+            try {
+                const response = await fetch('/api/data');
+                const data = await response.json();
+                
+                document.getElementById('temp-val').innerText = data.temperature.toFixed(1);
+                document.getElementById('hum-val').innerText = data.humidity.toFixed(1);
+                document.getElementById('threshold-val').innerText = data.threshold;
+                
+                const espDot = document.getElementById('esp-dot');
+                const espText = document.getElementById('esp-text');
+                if (data.esp32_online) {
+                    espDot.className = 'dot dot-online';
+                    espText.innerText = 'ONLINE';
+                    espText.style.color = '#2ecc71';
+                } else {
+                    espDot.className = 'dot dot-offline';
+                    espText.innerText = 'OFFLINE';
+                    espText.style.color = '#e74c3c';
+                }
+
+                const statusDiv = document.getElementById('alarm-status');
+                statusDiv.innerText = data.alarm_state;
+                statusDiv.className = 'status ' + data.alarm_state.toLowerCase();
+            } catch (error) {
+                console.error('Erreur lors de la mise à jour:', error);
+            }
+        }
+
+        async function setAlarm(state) {
+            try {
+                const response = await fetch('/api/alarm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ on: state })
+                });
+                const result = await response.json();
+                console.log('Action envoyée:', result);
+                updateDashboard(); // Mettre à jour immédiatement
+            } catch (error) {
+                alert('Erreur lors de l\'envoi de la commande');
+            }
+        }
+
+        // Mettre à jour toutes les 2 secondes
+        setInterval(updateDashboard, 2000);
+        updateDashboard();
+    </script>
+</body>
+</html>
