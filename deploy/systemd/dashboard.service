@@ -1,0 +1,15 @@
+[Unit]
+Description=Dashboard API Flask
+After=network.target mosquitto.service
+
+[Service]
+Type=simple
+User=amine
+WorkingDirectory=/home/amine/dashboard
+EnvironmentFile=-/home/amine/.env
+ExecStart=/usr/bin/python3 /home/amine/dashboard/dashboard.py
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

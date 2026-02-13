@@ -1,75 +1,224 @@
-import paho.mqtt.client as mqtt
-from gpiozero import LED, Buzzer
+import os
+import sqlite3
 import time
 
-# --- CONFIGURATION ---
-MQTT_BROKER = "10.160.24.192"
-MQTT_TOPIC_TEMP = "salle_serveur/sensor/temperature"
-MQTT_TOPIC_HUM = "salle_serveur/sensor/humidity"
-MQTT_TOPIC_CONTROL = "salle_serveur/control/alarm"
-MQTT_TOPIC_STATUS = "salle_serveur/status/alarm"
-TEMP_THRESHOLD = 24.0
+import paho.mqtt.client as mqtt
 
-# Initialisation (Buzzer D6 -> GPIO 6, LED D8 -> GPIO 8)
-led = LED(8)
-buzzer = Buzzer(6)
+def load_env_file(path: str):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for raw in f:
+                line = raw.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                k = k.strip()
+                v = v.strip()
+                if len(v) >= 2 and v[0] == v[-1] and v[0] in {"\"", "'"}:
+                    v = v[1:-1]
+                if k:
+                    os.environ[k] = v
+    except FileNotFoundError:
+        return
 
-manual_override = False
 
-def update_alarm(state):
-    if state:
-        led.on()
-        buzzer.on()
-    else:
-        led.off()
-        buzzer.off()
-    client.publish(MQTT_TOPIC_STATUS, "ON" if state else "OFF", retain=True)
+load_env_file(os.getenv("ENV_FILE", os.path.join(os.path.dirname(__file__), ".env")))
+
+MQTT_BROKER = os.getenv("MQTT_BROKER", "10.160.24.192")
+MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
+MQTT_USERNAME = os.getenv("MQTT_USERNAME", "")
+MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", "")
+MQTT_KEEPALIVE = int(os.getenv("MQTT_KEEPALIVE", "60"))
+
+TOPIC_TEMPERATURE = "salle_serveur/sensor/temperature"
+TOPIC_HUMIDITY = "salle_serveur/sensor/humidity"
+TOPIC_ALARM_CMD = "salle_serveur/alarm/cmd"
+TOPIC_ALARM_STATE = "salle_serveur/alarm/state"
+TOPIC_CONTROL = "salle_serveur/control/alarm"
+TOPIC_STATUS_CONTROLLER = "salle_serveur/status/pi_controller"
+
+TEMP_THRESHOLD = float(os.getenv("TEMP_THRESHOLD", "24.0"))
+DB_PATH = os.getenv("DB_PATH", "sensors.db")
+
+latest_temperature = None
+latest_humidity = None
+latest_alarm_state = "UNKNOWN"
+manual_mode = False
+last_command = None
+
+
+def db_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    conn = db_connection()
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS measures (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            temperature REAL NOT NULL,
+            humidity REAL NOT NULL,
+            ts DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS alarm_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source TEXT NOT NULL,
+            value TEXT NOT NULL,
+            ts DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_measures_ts ON measures(ts DESC)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_alarm_events_ts ON alarm_events(ts DESC)")
+    conn.commit()
+    conn.close()
+
+
+def insert_measure(temperature: float, humidity: float):
+    conn = db_connection()
+    conn.execute(
+        "INSERT INTO measures (temperature, humidity) VALUES (?, ?)",
+        (temperature, humidity),
+    )
+    conn.commit()
+    conn.close()
+
+
+def insert_alarm_event(source: str, value: str):
+    conn = db_connection()
+    conn.execute(
+        "INSERT INTO alarm_events (source, value) VALUES (?, ?)",
+        (source, value),
+    )
+    conn.commit()
+    conn.close()
+
+
+def normalized_alarm(payload: str):
+    p = payload.strip().upper()
+    if p in {"ON", "1", "TRUE"}:
+        return "ON"
+    if p in {"OFF", "0", "FALSE"}:
+        return "OFF"
+    if p == "AUTO":
+        return "AUTO"
+    return None
+
+
+def publish_alarm_command(client: mqtt.Client, state: str, source: str):
+    global last_command
+    if state not in {"ON", "OFF"}:
+        return
+    if state == last_command and source == "auto":
+        return
+    client.publish(TOPIC_ALARM_CMD, state, qos=1, retain=True)
+    last_command = state
+    insert_alarm_event(source, state)
+
+
+def evaluate_auto(client: mqtt.Client):
+    if latest_temperature is None:
+        return
+    next_state = "ON" if latest_temperature > TEMP_THRESHOLD else "OFF"
+    publish_alarm_command(client, next_state, "auto")
+
+
+def on_connect(client, userdata, flags, reason_code, properties=None):
+    client.publish(TOPIC_STATUS_CONTROLLER, "online", qos=1, retain=True)
+    client.subscribe(
+        [
+            (TOPIC_TEMPERATURE, 1),
+            (TOPIC_HUMIDITY, 1),
+            (TOPIC_CONTROL, 1),
+            (TOPIC_ALARM_STATE, 1),
+        ]
+    )
+
+
+def on_disconnect(client, userdata, disconnect_flags, reason_code, properties=None):
+    time.sleep(2)
+
 
 def on_message(client, userdata, message):
-    global manual_override
+    global latest_temperature
+    global latest_humidity
+    global latest_alarm_state
+    global manual_mode
+
+    topic = message.topic
+    payload = message.payload.decode(errors="ignore")
+
+    if topic == TOPIC_TEMPERATURE:
+        try:
+            latest_temperature = float(payload)
+            if not manual_mode:
+                evaluate_auto(client)
+        except ValueError:
+            pass
+        return
+
+    if topic == TOPIC_HUMIDITY:
+        try:
+            latest_humidity = float(payload)
+            if latest_temperature is not None:
+                insert_measure(latest_temperature, latest_humidity)
+        except ValueError:
+            pass
+        return
+
+    if topic == TOPIC_CONTROL:
+        parsed = normalized_alarm(payload)
+        if parsed == "AUTO":
+            manual_mode = False
+            evaluate_auto(client)
+            return
+        if parsed in {"ON", "OFF"}:
+            manual_mode = True
+            publish_alarm_command(client, parsed, "manual")
+        return
+
+    if topic == TOPIC_ALARM_STATE:
+        parsed = normalized_alarm(payload)
+        if parsed in {"ON", "OFF"}:
+            latest_alarm_state = parsed
+            insert_alarm_event("actuator", parsed)
+
+
+def create_client():
     try:
-        topic = message.topic
-        payload = message.payload.decode()
-        
-        if topic == MQTT_TOPIC_CONTROL:
-            if payload == "ON":
-                manual_override = True
-                update_alarm(True)
-                print("Manuel: Alarm ON")
-            elif payload == "OFF":
-                manual_override = False
-                update_alarm(False)
-                print("Manuel: Alarm OFF")
-        
-        elif topic == MQTT_TOPIC_TEMP:
-            temp = float(payload)
-            print(f"Température reçue: {temp}°C")
+        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="pi-controller")
+    except AttributeError:
+        client = mqtt.Client(client_id="pi-controller")
 
-            if not manual_override:
-                if temp > TEMP_THRESHOLD:
-                    print("!!! ALERTE SEUIL DÉPASSÉ !!!")
-                    update_alarm(True)
-                else:
-                    update_alarm(False)
-            
-    except Exception as e:
-        print(f"Erreur: {e}")
+    if MQTT_USERNAME:
+        client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
 
-# --- MQTT SETUP ---
-try:
-    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
-except AttributeError:
-    client = mqtt.Client()
+    client.will_set(TOPIC_STATUS_CONTROLLER, "offline", qos=1, retain=True)
+    client.on_connect = on_connect
+    client.on_disconnect = on_disconnect
+    client.on_message = on_message
+    return client
 
-client.on_message = on_message
 
-print(f"Contrôleur démarré (via gpiozero). Seuil: {TEMP_THRESHOLD}°C")
-try:
-    client.connect(MQTT_BROKER, 1883, 60)
-    client.subscribe([(MQTT_TOPIC_TEMP, 0), (MQTT_TOPIC_CONTROL, 0)])
-    client.loop_forever()
-except KeyboardInterrupt:
-    print("\nArrêt...")
-finally:
-    led.off()
-    buzzer.off()
+def main():
+    init_db()
+    client = create_client()
+    while True:
+        try:
+            client.connect(MQTT_BROKER, MQTT_PORT, MQTT_KEEPALIVE)
+            client.loop_forever()
+        except KeyboardInterrupt:
+            break
+        except Exception:
+            time.sleep(2)
+
+
+if __name__ == "__main__":
+    main()

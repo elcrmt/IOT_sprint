@@ -1,110 +1,341 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IoT Dashboard - REST API</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background-color: #f0f2f5; padding: 20px; }
-        .container { display: flex; flex-wrap: wrap; justify-content: center; max-width: 1000px; margin: 0 auto; }
-        .card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); display: inline-block; min-width: 250px; margin: 15px; flex: 1; }
-        .value { font-size: 3.5em; font-weight: bold; color: #2c3e50; margin: 10px 0; }
-        .unit { font-size: 0.4em; color: #7f8c8d; }
-        .temp { color: #e74c3c; }
-        .hum { color: #3498db; }
-        .status { font-size: 1.8em; margin: 15px 0; font-weight: bold; padding: 10px; border-radius: 8px; }
-        .status.on { color: #ffffff; background-color: #e74c3c; box-shadow: 0 0 20px rgba(231, 76, 60, 0.5); }
-        .status.off { color: #ffffff; background-color: #2ecc71; }
-        .controls { margin-top: 20px; }
-        button { padding: 12px 24px; font-size: 1.1em; cursor: pointer; border-radius: 8px; border: none; transition: all 0.2s; font-weight: bold; margin: 5px; }
-        .btn-on { background: #e74c3c; color: white; }
-        .btn-off { background: #2ecc71; color: white; }
-        button:hover { opacity: 0.8; transform: translateY(-2px); }
-        .threshold { font-size: 1.2em; color: #7f8c8d; margin-top: 5px; }
-        .esp-status { margin-top: 10px; font-weight: bold; }
-        .dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-        .dot-online { background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
-        .dot-offline { background-color: #e74c3c; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Salle Serveur</title>
+  <style>
+    :root {
+      --bg: radial-gradient(circle at 20% 20%, #e9f4ff 0%, #f6f8fb 45%, #edf3f2 100%);
+      --card: #ffffff;
+      --ink: #0f1720;
+      --muted: #5f6b76;
+      --danger: #de3d3d;
+      --safe: #16985f;
+      --warn: #f17c00;
+      --line: #d8e2ea;
+      --shadow: 0 14px 34px rgba(15, 23, 32, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .banner {
+      max-width: 1060px;
+      margin: 0 auto 14px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: var(--shadow);
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .banner.error {
+      border-color: rgba(222, 61, 61, 0.55);
+      color: #7a1d1d;
+      background: rgba(255, 235, 235, 0.95);
+    }
+
+    .layout {
+      max-width: 1060px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .wide {
+      grid-column: 1 / -1;
+    }
+
+    h1 {
+      margin: 0 0 18px;
+      font-size: clamp(1.5rem, 2.5vw, 2.2rem);
+      text-align: center;
+      letter-spacing: 0.03em;
+    }
+
+    .label {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .value {
+      margin: 8px 0 0;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      font-weight: 700;
+      margin-top: 10px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #9aa6b2;
+    }
+
+    .on .dot {
+      background: var(--danger);
+      box-shadow: 0 0 10px rgba(222, 61, 61, 0.7);
+    }
+
+    .off .dot {
+      background: var(--safe);
+      box-shadow: 0 0 10px rgba(22, 152, 95, 0.6);
+    }
+
+    .btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 11px 16px;
+      font-weight: 700;
+      font-size: 0.96rem;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: default;
+    }
+
+    .btn-on {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .btn-off {
+      background: var(--safe);
+      color: #fff;
+    }
+
+    .btn-auto {
+      background: #233647;
+      color: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.92rem;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .inline {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+  </style>
 </head>
 <body>
-    <h1>Tableau de Bord IoT</h1>
-    
-    <div style="margin-bottom: 20px;">
-        <span id="esp-dot" class="dot dot-offline"></span>
-        ESP32: <span id="esp-text" class="esp-status" style="color: #e74c3c;">OUI (simulation)</span>
-    </div>
+  <h1>Monitoring Salle Serveur</h1>
 
-    <div class="container">
-        <div class="card">
-            <h2>Température</h2>
-            <div class="value temp"><span id="temp-val">--</span><span class="unit">°C</span></div>
-            <div class="threshold">Seuil: <span id="threshold-val">--</span>°C</div>
-        </div>
+  <div class="banner" id="banner">
+    <div id="banner-left">API: OK</div>
+    <div id="banner-right">Dernier refresh: --</div>
+  </div>
 
-        <div class="card">
-            <h2>Humidité</h2>
-            <div class="value hum"><span id="hum-val">--</span><span class="unit">%</span></div>
-        </div>
+  <section class="layout">
+    <article class="card">
+      <p class="label">Temperature</p>
+      <p class="value" id="temperature">--.- °C</p>
+      <div class="inline"><span>Seuil</span><strong id="threshold">--.- °C</strong></div>
+    </article>
 
-        <div class="card">
-            <h2>État de l'Alarme</h2>
-            <div class="status off" id="alarm-status">OFF</div>
-            <div class="controls">
-                <button class="btn-on" onclick="setAlarm(true)">FORCE ON</button>
-                <button class="btn-off" onclick="setAlarm(false)">FORCE OFF</button>
-            </div>
-        </div>
-    </div>
+    <article class="card">
+      <p class="label">Humidite</p>
+      <p class="value" id="humidity">--.- %</p>
+      <div class="inline"><span>Derniere mesure</span><strong id="measure-ts">--</strong></div>
+    </article>
 
-    <script>
-        async function updateDashboard() {
-            try {
-                const response = await fetch('/api/data');
-                const data = await response.json();
-                
-                document.getElementById('temp-val').innerText = data.temperature.toFixed(1);
-                document.getElementById('hum-val').innerText = data.humidity.toFixed(1);
-                document.getElementById('threshold-val').innerText = data.threshold;
-                
-                const espDot = document.getElementById('esp-dot');
-                const espText = document.getElementById('esp-text');
-                if (data.esp32_online) {
-                    espDot.className = 'dot dot-online';
-                    espText.innerText = 'ONLINE';
-                    espText.style.color = '#2ecc71';
-                } else {
-                    espDot.className = 'dot dot-offline';
-                    espText.innerText = 'OFFLINE';
-                    espText.style.color = '#e74c3c';
-                }
+    <article class="card">
+      <p class="label">Alarme</p>
+      <div class="status" id="alarm-status"><span class="dot"></span><span id="alarm-text">UNKNOWN</span></div>
+      <div class="btns">
+        <button class="btn-on" id="force-on">FORCE ON</button>
+        <button class="btn-off" id="force-off">FORCE OFF</button>
+        <button class="btn-auto" id="auto-mode">AUTO</button>
+      </div>
+      <div class="inline"><span>ESP32</span><strong id="esp32-state">OFFLINE</strong></div>
+      <div class="inline"><span>Controller</span><strong id="controller-state">OFFLINE</strong></div>
+    </article>
 
-                const statusDiv = document.getElementById('alarm-status');
-                statusDiv.innerText = data.alarm_state;
-                statusDiv.className = 'status ' + data.alarm_state.toLowerCase();
-            } catch (error) {
-                console.error('Erreur lors de la mise à jour:', error);
-            }
-        }
+    <article class="card wide">
+      <p class="label">Historique recent</p>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Temperature</th>
+            <th>Humidite</th>
+            <th>Timestamp</th>
+          </tr>
+        </thead>
+        <tbody id="history-body"></tbody>
+      </table>
+    </article>
+  </section>
 
-        async function setAlarm(state) {
-            try {
-                const response = await fetch('/api/alarm', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ on: state })
-                });
-                const result = await response.json();
-                console.log('Action envoyée:', result);
-                updateDashboard(); // Mettre à jour immédiatement
-            } catch (error) {
-                alert('Erreur lors de l\'envoi de la commande');
-            }
-        }
+  <script>
+    const elTemp = document.getElementById('temperature');
+    const elHumidity = document.getElementById('humidity');
+    const elThreshold = document.getElementById('threshold');
+    const elTs = document.getElementById('measure-ts');
+    const elAlarmText = document.getElementById('alarm-text');
+    const elAlarmStatus = document.getElementById('alarm-status');
+    const elEsp32 = document.getElementById('esp32-state');
+    const elController = document.getElementById('controller-state');
+    const elHistory = document.getElementById('history-body');
+    const elBanner = document.getElementById('banner');
+    const elBannerLeft = document.getElementById('banner-left');
+    const elBannerRight = document.getElementById('banner-right');
 
-        // Mettre à jour toutes les 2 secondes
-        setInterval(updateDashboard, 2000);
-        updateDashboard();
-    </script>
+    async function fetchJson(url, options) {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        throw new Error(`${response.status} ${response.statusText}`);
+      }
+      return response.json();
+    }
+
+    function setAlarmBadge(state) {
+      elAlarmText.textContent = state;
+      elAlarmStatus.classList.remove('on', 'off');
+      if (state === 'ON') {
+        elAlarmStatus.classList.add('on');
+      } else if (state === 'OFF') {
+        elAlarmStatus.classList.add('off');
+      }
+    }
+
+    function setNodeState(node, online) {
+      node.textContent = online ? 'ONLINE' : 'OFFLINE';
+      node.style.color = online ? 'var(--safe)' : 'var(--danger)';
+    }
+
+    async function refreshLatest() {
+      const data = await fetchJson('/api/latest');
+      elThreshold.textContent = `${Number(data.threshold).toFixed(1)} °C`;
+      setAlarmBadge(data.alarm_state || 'UNKNOWN');
+      setNodeState(elEsp32, Boolean(data.esp32_online));
+      setNodeState(elController, Boolean(data.controller_online));
+
+      if (data.measure) {
+        elTemp.textContent = `${Number(data.measure.temperature).toFixed(1)} °C`;
+        elHumidity.textContent = `${Number(data.measure.humidity).toFixed(1)} %`;
+        elTs.textContent = data.measure.ts;
+      }
+    }
+
+    async function refreshHistory() {
+      const rows = await fetchJson('/api/history?limit=12');
+      elHistory.innerHTML = '';
+      rows.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.id}</td>
+          <td>${Number(row.temperature).toFixed(1)} °C</td>
+          <td>${Number(row.humidity).toFixed(1)} %</td>
+          <td>${row.ts}</td>
+        `;
+        elHistory.appendChild(tr);
+      });
+    }
+
+    async function sendAlarm(payload) {
+      const buttons = document.querySelectorAll('button');
+      buttons.forEach(btn => btn.disabled = true);
+      try {
+        await fetchJson('/api/alarm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        await refreshLatest();
+      } finally {
+        buttons.forEach(btn => btn.disabled = false);
+      }
+    }
+
+    document.getElementById('force-on').addEventListener('click', () => sendAlarm({ state: 'ON' }));
+    document.getElementById('force-off').addEventListener('click', () => sendAlarm({ state: 'OFF' }));
+    document.getElementById('auto-mode').addEventListener('click', () => sendAlarm({ mode: 'AUTO' }));
+
+    async function refreshAll() {
+      try {
+        await Promise.all([refreshLatest(), refreshHistory()]);
+        elBanner.classList.remove('error');
+        elBannerLeft.textContent = 'API: OK';
+        elBannerRight.textContent = `Dernier refresh: ${new Date().toLocaleTimeString()}`;
+      } catch (err) {
+        elBanner.classList.add('error');
+        elBannerLeft.textContent = 'API: KO';
+        elBannerRight.textContent = `Dernier refresh: ${new Date().toLocaleTimeString()}`;
+      }
+    }
+
+    refreshAll();
+    setInterval(refreshAll, 3000);
+  </script>
 </body>
 </html>
